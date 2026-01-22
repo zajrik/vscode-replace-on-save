@@ -25,7 +25,7 @@ function doReplacements(file: string, textLine: string, replacements: Replacemen
   replacements.forEach(replacement => {
     if (replacement.languageIdentifiers.includes(languageId)) {
       replacement.rules.forEach(rule => {
-        if (rule.exclude === null || !minimatch(file, rule.exclude!)) {
+        if (rule.exclude === undefined || rule.exclude === null || !minimatch(file, rule.exclude)) {
           rules.push(rule);
         }
       });
