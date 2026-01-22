@@ -41,10 +41,12 @@ function doReplacements(file: string, textLine: string, replacements: Replacemen
   return finalTextLine;
 }
 
+let _listener: vscode.Disposable;
+
 export function activate() {
   console.log('Congratulations, your extension "Replace On Save" is now active!');
 
-  vscode.workspace.onWillSaveTextDocument((documentWillSave: vscode.TextDocumentWillSaveEvent) => {
+  _listener = vscode.workspace.onWillSaveTextDocument((documentWillSave: vscode.TextDocumentWillSaveEvent) => {
     // Get configurations
     const enabled: boolean =
       vscode.workspace.getConfiguration('replaceOnSave').get('enabled') || false;
@@ -104,4 +106,6 @@ export function activate() {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {
+  _listener.dispose();
+}
