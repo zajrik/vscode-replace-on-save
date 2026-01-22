@@ -1,10 +1,12 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as minimatch from 'minimatch';
 
 interface Rule {
   search: string;
   replace: string;
+  exclude: string;
 }
 
 interface Replacement {
@@ -12,7 +14,7 @@ interface Replacement {
   rules: Rule[];
 }
 
-function doReplacements(textLine: string, replacements: Replacement[], languageId: string): string {
+function doReplacements(file: string, textLine: string, replacements: Replacement[], languageId: string): string {
   if (textLine.length < 1) {
     // Return if is a blank line
     return textLine;
@@ -23,7 +25,9 @@ function doReplacements(textLine: string, replacements: Replacement[], languageI
   replacements.forEach(replacement => {
     if (replacement.languageIdentifiers.includes(languageId)) {
       replacement.rules.forEach(rule => {
-        rules.push(rule);
+        if (!minimatch(file, rule.exclude)) {
+          rules.push(rule);
+        }
       });
     }
   });
@@ -43,10 +47,10 @@ export function activate() {
   vscode.workspace.onWillSaveTextDocument((documentWillSave: vscode.TextDocumentWillSaveEvent) => {
     // Get configurations
     const enabled: boolean =
-      vscode.workspace.getConfiguration('replace-on-save').get('enabled') || false;
+      vscode.workspace.getConfiguration('replaceOnSave').get('enabled') || false;
 
     const replacements: Replacement[] =
-      vscode.workspace.getConfiguration('replace-on-save').get('replacements') || [];
+      vscode.workspace.getConfiguration('replaceOnSave').get('replacements') || [];
 
     // Load all language identifiers in the configuration file
     let allLanguageIdentifiers: string[] = [];
@@ -59,7 +63,6 @@ export function activate() {
     const document = documentWillSave.document;
 
     if (enabled && allLanguageIdentifiers.includes(document.languageId)) {
-      //
       const lastLineLength = document.lineAt(document.lineCount - 1).text.length;
 
       documentWillSave.waitUntil(
@@ -73,6 +76,7 @@ export function activate() {
               newText += '\n';
             }
             newText += doReplacements(
+              document.fileName,
               document.lineAt(lineNo).text,
               replacements,
               document.languageId,
@@ -100,4 +104,4 @@ export function activate() {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }

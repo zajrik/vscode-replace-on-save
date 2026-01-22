@@ -9,26 +9,26 @@ Settings can be user or workspace settings.
 To configure it only in the current workspace, edit the `.vscode/settings.json` file relative to the root of the project and add the following settings:
 
 ```
-"replace-on-save": {
-  "enabled": true / false,
-  "replacements": [
-    {
-      "languageIdentifiers": ["plaintext", "javascriptreact", ...],
-      "rules": [
-        {
-          "search": "Search Text / JavaScript regex",
-          "replace": "Replace Text"
-        },
-        {
-          ...
-        }
-      ]
-    },
-    {
-      ...
-    }
-  ]
-}
+"replaceOnSave.enabled": true, // or false
+"replaceOnSave.replacements": [
+  {
+    "languageIdentifiers": ["plaintext", "javascriptreact", ...],
+    "rules": [
+      {
+        "search": "Search Text / JavaScript regex",
+        "replace": "Replace Text",
+        // Exclude search/replace in files matching a glob pattern
+        "exclude": "**/test/**/*.js"
+      },
+      {
+        ...
+      }
+    ]
+  },
+  {
+    ...
+  }
+]
 ```
 
 To see a list of language identifiers go to the following link:
@@ -39,38 +39,42 @@ https://code.visualstudio.com/docs/languages/identifiers
 ./.vscode/settings.json
 
 ```
-"replace-on-save": {
-  "enabled": true,
-  "replacements": [
-    {
-      "languageIdentifiers": ["plaintext"],
-      "rules": [
-        {
-          "search": "dog", // This can be a valid javascript regular expression
-          "replace": "cat"
-        },
-        {
-          "search": "duck",
-          "replace": "chicken"
-        }
-      ]
-    },
-    {
-      "languageIdentifiers": ["javascriptreact", "jsx"],
-      "rules": [
-        {
-          "search": "class=\"",
-          "replace": "className=\""
-        }
-      ]
-    }
-  ]
-}
+"replaceOnSave.enabled": true,
+"replaceOnSave.replacements": [
+  {
+    "languageIdentifiers": ["plaintext"],
+    "rules": [
+      {
+        "search": "dog", // This can be a valid javascript regular expression
+        "replace": "cat"
+      },
+      {
+        "search": "duck",
+        "replace": "chicken"
+      }
+    ]
+  },
+  {
+    "languageIdentifiers": ["javascriptreact", "jsx"],
+    "rules": [
+      {
+        "search": "class=\"",
+        "replace": "className=\"",
+        "exclude": "**/test/**/*.js"
+      }
+    ]
+  }
+]
 ```
 
 ## Release Notes
 
-Search and replace works correctly.
+### 2.0.0
+
+- Add `exclude` rule field to ignore search/replace in files matching glob patterns
+- Update configuration and package.json `contributes` to allow vscode to provide
+  completion for replace-on-save configuration options
+  - This is a breaking change since it necessitates updating your settings
 
 ### 1.0.0
 

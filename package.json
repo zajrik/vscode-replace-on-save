@@ -8,7 +8,7 @@
   },
   "displayName": "Replace On Save",
   "description": "Run a search and replace before saving a file, it also supports REGEX",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "engines": {
     "vscode": "^1.52.0"
   },
@@ -20,6 +20,17 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Replace On Save",
+      "properties": {
+        "replaceOnSave.enabled": {
+          "type": "boolean"
+        },
+        "replaceOnSave.replacements": {
+          "type": "array"
+        }
+      }
+    },
     "commands": []
   },
   "scripts": {
