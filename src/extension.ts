@@ -6,7 +6,7 @@ import * as minimatch from 'minimatch';
 interface Rule {
   search: string;
   replace: string;
-  exclude: string;
+  exclude?: string;
 }
 
 interface Replacement {
@@ -25,7 +25,7 @@ function doReplacements(file: string, textLine: string, replacements: Replacemen
   replacements.forEach(replacement => {
     if (replacement.languageIdentifiers.includes(languageId)) {
       replacement.rules.forEach(rule => {
-        if (!minimatch(file, rule.exclude)) {
+        if (rule.exclude === null || !minimatch(file, rule.exclude!)) {
           rules.push(rule);
         }
       });
