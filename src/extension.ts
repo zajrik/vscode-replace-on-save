@@ -1,111 +1,106 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
-import { minimatch } from 'minimatch';
+import {
+  Disposable,
+  OutputChannel,
+  TextDocument,
+  TextDocumentWillSaveEvent,
+  TextEdit,
+  window,
+  workspace
+} from 'vscode';
+import { ConfigReplacement } from './config/ConfigReplacement';
+import { LineReplacement } from './objects/LineReplacement';
+import { Replacement } from './objects/Replacement';
+import { Rule } from './objects/Rule';
 
-interface Rule {
-  search: string;
-  replace: string;
-  exclude?: string;
+const EXTENSION_NAME: string = 'Replace On Save';
+const EXTENSION_CONFIG_NAME: string = 'replaceOnSave';
+const EXTENSION_CONFIG_ENABLED: string = 'enabled';
+const EXTENSION_CONFIG_REPLACEMENTS: string = 'replacements';
+
+const outputChannel: OutputChannel = window.createOutputChannel(EXTENSION_NAME);
+
+let settingChangeListener: Disposable;
+let documentSaveListener: Disposable;
+
+let configEnabled: boolean = false;
+let configReplacements: Replacement[] = [];
+let configLanguages: Set<string> = new Set();
+
+export function activate(): void {
+  outputChannel.appendLine(`${EXTENSION_NAME} activated.`);
+  settingChangeListener = workspace.onDidChangeConfiguration(onConfigurationChange);
+  documentSaveListener = workspace.onWillSaveTextDocument(onWillSave);
 }
 
-interface Replacement {
-  languageIdentifiers: string[];
-  rules: Rule[];
+export function deactivate(): void {
+  outputChannel.appendLine(`${EXTENSION_NAME} deactivated.`);
+  settingChangeListener.dispose();
+  documentSaveListener.dispose();
+  outputChannel.dispose();
 }
 
-function doReplacements(file: string, textLine: string, replacements: Replacement[], languageId: string): string {
-  if (textLine.length < 1) {
-    // Return if is a blank line
-    return textLine;
+/**
+ * `onDidChangeConfiguration` event handler.
+ */
+function onConfigurationChange(): void {
+  outputChannel.appendLine('Config changed, reloading config');
+
+  configEnabled = workspace
+    .getConfiguration(EXTENSION_CONFIG_NAME)
+    .get(EXTENSION_CONFIG_ENABLED) ?? false;
+
+  // Skip processing replacements if extension is disabled
+  if (!configEnabled) {
+    outputChannel.appendLine('Extension is disabled');
+    return;
   }
 
-  // Determine the rules for the languagueID
-  let rules: Rule[] = [];
-  replacements.forEach(replacement => {
-    if (replacement.languageIdentifiers.includes(languageId)) {
-      replacement.rules.forEach(rule => {
-        if (rule.exclude === undefined || rule.exclude === null || !minimatch(file, rule.exclude)) {
-          rules.push(rule);
-        }
-      });
-    }
-  });
+  const replacementConfigs: ConfigReplacement[] = workspace
+    .getConfiguration(EXTENSION_CONFIG_NAME)
+    .get(EXTENSION_CONFIG_REPLACEMENTS) ?? [];
 
-  let finalTextLine = textLine;
+  configReplacements = replacementConfigs.map(Replacement.fromConfig);
+  configLanguages = configReplacements
+    .map(it => it.languages)
+    .reduce((a, b) => new Set([...a, ...b]));
 
-  rules.forEach(rule => {
-    finalTextLine = finalTextLine.replace(new RegExp(rule.search, 'g'), rule.replace);
-  });
-
-  return finalTextLine;
+  outputChannel.appendLine([
+    `Replacements loaded. Affected language identifiers: `,
+    `${Array.from(configLanguages).join(', ')}`,
+  ].join(''));
 }
 
-let _listener: vscode.Disposable;
+/**
+ * `onWillSaveTextDocument` event handler.
+ */
+function onWillSave(event: TextDocumentWillSaveEvent) {
+  // Discard event if extension is not enabled
+  if (!configEnabled) { return; }
 
-export function activate() {
-  console.log('Congratulations, your extension "Replace On Save" is now active!');
+  const document: TextDocument = event.document;
 
-  _listener = vscode.workspace.onWillSaveTextDocument((documentWillSave: vscode.TextDocumentWillSaveEvent) => {
-    // Get configurations
-    const enabled: boolean =
-      vscode.workspace.getConfiguration('replaceOnSave').get('enabled') || false;
+  // Discard event if document type has no applicable replacements
+  if (!configLanguages.has(document.languageId)) { return; }
 
-    const replacements: Replacement[] =
-      vscode.workspace.getConfiguration('replaceOnSave').get('replacements') || [];
+  // Gather applicable replacement rules for document
+  const rules: Rule[] = configReplacements
+    .filter(it => it.isApplicableTo(document))
+    .map(it => it.applicableRulesFor(document))
+    .reduce((a, b) => a.concat(b), []);
 
-    // Load all language identifiers in the configuration file
-    let allLanguageIdentifiers: string[] = [];
-    replacements.forEach(replacement => {
-      replacement.languageIdentifiers.forEach(identifier => {
-        allLanguageIdentifiers.push(identifier);
-      });
-    });
+  // Discard event if there are no applicable replacement rules
+  if (rules.length < 1) { return; }
 
-    const document = documentWillSave.document;
+  // Gather document edits to apply
+  const edits: TextEdit[] = Array(document.lineCount)
+    .fill(0)
+    .map((_, index) => new LineReplacement(document.lineAt(index), rules))
+    .filter(it => it.hasChanges())
+    .map(it => it.toTextEdit());
 
-    if (enabled && allLanguageIdentifiers.includes(document.languageId)) {
-      const lastLineLength = document.lineAt(document.lineCount - 1).text.length;
+  // Discard event if there are no edits to be applied
+  if (edits.length < 1) { return; }
 
-      documentWillSave.waitUntil(
-        new Promise(resolve => {
-          let oldText: string = '';
-          let newText: string = '';
-
-          for (let lineNo = 0; lineNo < document.lineCount; lineNo++) {
-            if (lineNo > 0) {
-              oldText += '\n';
-              newText += '\n';
-            }
-            newText += doReplacements(
-              document.fileName,
-              document.lineAt(lineNo).text,
-              replacements,
-              document.languageId,
-            );
-            oldText += document.lineAt(lineNo).text;
-          }
-
-          // Prevent no necesary changes
-          if (newText !== oldText) {
-            resolve([
-              vscode.TextEdit.insert(new vscode.Position(0, 0), newText),
-              vscode.TextEdit.delete(
-                new vscode.Range(
-                  new vscode.Position(0, 0),
-                  new vscode.Position(document.lineCount - 1, lastLineLength),
-                ),
-              ),
-            ]);
-          }
-          resolve([]);
-        }),
-      );
-    }
-  });
-}
-
-// this method is called when your extension is deactivated
-export function deactivate() {
-  _listener.dispose();
+  outputChannel.appendLine(`Applying replacements to file: ${document.fileName}`);
+  event.waitUntil(Promise.resolve(edits));
 }

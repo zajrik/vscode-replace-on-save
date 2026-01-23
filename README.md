@@ -8,8 +8,11 @@ Settings can be user or workspace settings.
 
 To configure it only in the current workspace, edit the `.vscode/settings.json` file relative to the root of the project and add the following settings:
 
-```
-"replaceOnSave.enabled": true, // or false
+```json
+// To enable the extension, disabled by default
+"replaceOnSave.enabled": true,
+
+// Configure replacement rules
 "replaceOnSave.replacements": [
   {
     "languageIdentifiers": ["plaintext", "javascriptreact", ...],
@@ -17,7 +20,7 @@ To configure it only in the current workspace, edit the `.vscode/settings.json` 
       {
         "search": "Search Text / JavaScript regex",
         "replace": "Replace Text",
-        // Exclude search/replace in files matching a glob pattern
+        // Skip this rule in files matching a glob pattern
         "exclude": "**/test/**/*.js"
       },
       {
@@ -38,29 +41,32 @@ https://code.visualstudio.com/docs/languages/identifiers
 
 ./.vscode/settings.json
 
-```
+```json
 "replaceOnSave.enabled": true,
 "replaceOnSave.replacements": [
   {
     "languageIdentifiers": ["plaintext"],
     "rules": [
       {
-        "search": "dog", // This can be a valid javascript regular expression
+        "search": "dog",
         "replace": "cat"
       },
       {
         "search": "duck",
-        "replace": "chicken"
+        "replace": "chicken",
+        // Ignore all txt files in "ignore" directory for this rule
+        "exclude": "**/ignore/*.txt"
       }
     ]
   },
   {
     "languageIdentifiers": ["javascriptreact", "jsx"],
+    // Exclude jsx files in test directory from all rules in this replacement
+    "exclude": "**/test/**/*.jsx",
     "rules": [
       {
         "search": "class=\"",
         "replace": "className=\"",
-        "exclude": "**/test/**/*.js"
       }
     ]
   }
@@ -68,6 +74,15 @@ https://code.visualstudio.com/docs/languages/identifiers
 ```
 
 ## Release Notes
+
+### 2.1.0
+
+- Add `exclude` replacement field to ignore all rules in replacement definition
+  for files matching glob pattern
+- Rewrite extension 🤡
+  - Replacement edits are applied per-line when applicable rather than by replacing
+    entire document contents. This should keep things speedy in larger documents.
+  - Added output channel for logging
 
 ### 2.0.0
 

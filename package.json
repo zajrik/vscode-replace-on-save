@@ -8,7 +8,7 @@
   },
   "displayName": "Replace On Save",
   "description": "Run a search and replace before saving a file, it also supports REGEX",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "engines": {
     "vscode": "^1.52.0"
   },
@@ -35,25 +35,22 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "npm esbuild.js",
+    "package": "npm run compile && vsce package",
     "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "lint": "eslint src --ext ts"
+  },
+  "dependencies": {
+    "minimatch": "^10.1.1"
   },
   "devDependencies": {
-    "@types/mocha": "^8.0.4",
     "@types/node": "^12.11.7",
     "@types/vscode": "^1.52.0",
     "@typescript-eslint/eslint-plugin": "^4.9.0",
     "@typescript-eslint/parser": "^4.9.0",
     "esbuild": "^0.27.2",
     "eslint": "^7.15.0",
-    "mocha": "^8.1.3",
-    "typescript": "^4.1.2",
+    "typescript": "^5.9.0",
     "vscode-test": "^1.4.1"
-  },
-  "dependencies": {
-    "minimatch": "^10.1.1"
   }
 }
